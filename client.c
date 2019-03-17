@@ -93,8 +93,24 @@ void crc(char *input,char *key,char *result,int keylen,int msglen){
 			result[msglen+i] = rem[i];
 		}
 	}
+/*
+BER -> Bit Error Rate = No of bits to have error in a bit transmitted on an average
+So we randomly choose these bits and generate error
+*/
+void randomError(float ber,char *pure,char *noisy,int size){
+	int n = floor(ber*size);
 
-
+	int indx[n];
+	for(int i=0;i<n;i++){
+		indx[i] = rand() % size-1;
+		printf("%d\n",indx[i]);
+	}
+	printf("\n");
+	for(int i=0;i<n;i++){
+		if(pure[indx[i]]) noisy[indx[i]] = '0';
+		else noisy[indx[i]] = '1';
+	}
+}
 
 int main(int argc,char *argv[]) 
 { 
@@ -162,7 +178,7 @@ int main(int argc,char *argv[])
     // coverting sockaddr_in(socket for IP based communication) to sockaddr(generic socket)
     // Check if connection can be initiated, if yes returns 0, else -1 
 
-	send(sock,result,strlen(result),0); 
+	send(sock,result,msglen+keylen-1,0); 
 
     //send the message, the 0 as last parameter is the field for flags.
 	printf("Message Sent Successfully\n"); 
