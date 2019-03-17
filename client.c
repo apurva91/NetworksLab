@@ -51,14 +51,14 @@ int str_to_pnum(char str[]){
 int main(int argc,char *argv[]) 
 { 
 	if(argc != 3){
-		printf("Missing/Extra Arguments provided.\n");
-		printf("Usage:- ./a.out <Server IP Address> <Server Port>\n");
+		perror("Missing/Extra Arguments provided.\n");
+		perror("Usage:- ./a.out <Server IP Address> <Server Port>\n");
 		return -1;
 	}
 	//checking for whether correct number of arguments are provided
 	int port = str_to_pnum(argv[2]);
 	if(port==-1){
-		printf("Invalid Port Number Must be in range [0-65535]");
+		perror("Invalid Port Number Must be in range [0-65535]");
 	}
 	//checking for port number
 
@@ -71,7 +71,7 @@ int main(int argc,char *argv[])
 	int sock = 0;
 
 	if ((sock = socket(AF_INET,SOCK_STREAM,0)) < 0){ 
-		printf("Socket creation error \n"); 
+		perror("Socket creation error \n"); 
 		return -1; 
 	}
     //Initializing the socket, The socket function creates an unbound socket and returns its file descriptor. SOCK_STREAM provides sequenced and reliable data transfer
@@ -85,19 +85,20 @@ int main(int argc,char *argv[])
 
 
 	if(inet_pton(AF_INET,argv[1],&server_address.sin_addr) <= 0){ 
-		printf("Invalid server address / Address not supported \n"); 
+		perror("Invalid server address / Address not supported \n"); 
 		return -1; 
 	} 
     // Check if the given IP address belongs to the given family and convert it to binary and store it in server_address
 
 	if (connect(sock,(struct sockaddr *)&server_address,sizeof(server_address)) < 0){ 
-		printf("Connection Failed \n"); 
+		perror("Connection Failed \n"); 
 		return -1; 
 	}
     // coverting sockaddr_in(socket for IP based communication) to sockaddr(generic socket)
     // Check if connection can be initiated, if yes returns 0, else -1 
 
 	send(sock,message,strlen(message),0); 
+
     //send the message, the 0 as last parameter is the field for flags.
 	printf("Message Sent Successfully\n"); 
 
