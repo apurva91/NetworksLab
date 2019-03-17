@@ -24,6 +24,44 @@ bool isNumber(char str[]){
 	return true;
 }
 
+bool isErrorFree(char *input,char *key,int msglen,int keylen){
+	char key1[30],temp[30],quot[100],rem[30];
+	int i,j;
+
+	strcpy(key1,key);
+	for(i=0;i<keylen-1;i++)
+	{
+		input[msglen+i]='0';
+	}
+	for(i=0;i<keylen;i++)
+		temp[i]=input[i];
+	for(i=0;i<msglen;i++)
+	{
+		quot[i]=temp[0];
+		if(quot[i]=='0')
+			for(j=0;j<keylen;j++)
+				key[j]='0';
+			else{
+				for(j=0;j<keylen;j++)
+					key[j]=key1[j];
+			}
+			for(j=keylen-1;j>0;j--)
+			{
+				if(temp[j]==key[j])
+					rem[j-1]='0';
+				else
+					rem[j-1]='1';
+			}
+			rem[keylen-1]=input[i+keylen];
+			strcpy(temp,rem);
+		}
+		strcpy(rem,temp);
+		for(int k = 0;k<keylen-1;k++){
+			if(rem[k]=='1') return false;
+		}
+		return true;
+}
+
 int str_to_pnum(char str[]){
 	if(!isNumber(str)){
 		return -1;
@@ -47,6 +85,7 @@ int str_to_pnum(char str[]){
 	}
 	return n;
 }
+
 
 
 int main(int argc,char *argv[]) 
@@ -105,7 +144,14 @@ int main(int argc,char *argv[])
 
 	char buffer[OUTPUT_BUFFER_SIZE] = {0}; 
 	int valread = read(client_socket,buffer,1024); 
-	printf("%s\n",buffer ); 
+	printf("%s\n",buffer );
+
+	char key[10] = {'1','0','0','0','0','0','1','1','1'};
+	key[9] = '\0';
+
+	bool err = isErrorFree(buffer,key,strlen(buffer),strlen(key));
+	printf("%d\n",err);
+
 
 	char *message = "Hello from server"; 
 	send(client_socket , message , strlen(message) , 0 ); 

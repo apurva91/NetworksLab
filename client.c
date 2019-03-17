@@ -133,11 +133,14 @@ int main(int argc,char *argv[])
 	char *message = "Hello from client"; 
     //The message to be sent
 	int i,j,keylen,msglen;
-	char input[100], key[30],temp[30],quot[100],rem[30],key1[30];
+	char input[100],temp[30],quot[100],rem[30],key1[30];
 	printf("Enter Data: ");
 	gets(input);
-	printf("Enter Key: ");
-	gets(key);
+
+	//CRC-8 Generator Polynomial
+	char key[10] = {'1','0','0','0','0','0','1','1','1'};
+	key[9] = '\0';
+	
 	keylen=strlen(key);
 	msglen=strlen(input);
 
