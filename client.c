@@ -9,8 +9,13 @@
 #include <ctype.h>
 #include <math.h>
 #include <time.h>
+#include <limits.h>
 
 #define OUTPUT_BUFFER_SIZE 1024
+
+int total_sent = 0;
+int total_error = 0;
+float ber = 0.05;
 
 
 bool isNumber(char str[]){
@@ -48,8 +53,52 @@ int str_to_pnum(char str[]){
 	return n;
 }
 
+bool isErrorFree(char *input1,char *key1,int msglen,int keylen){
+    char key[30],temp[1000],quot[1000],rem[30];
+    int i,j;
+    char input[msglen+1];
+    strcpy(input,input1);
+    strcpy(key,key1);
+    for(i=0;i<keylen-1;i++)
+    {
+        input[msglen+i]='0';
+    }
+    for(i=0;i<keylen;i++){
+        temp[i]=input[i];
+    }
+    for(i=0;i<msglen;i++)
+    {
+        quot[i]=temp[0];
+        if(quot[i]=='0'){
+
+            for(j=0;j<keylen;j++)
+                key[j]='0';
+        }
+        else{
+            for(j=0;j<keylen;j++){
+                key[j]=key1[j];
+            }
+        }
+        for(j=keylen-1;j>0;j--)
+        {
+            if(temp[j]==key[j])
+                rem[j-1]='0';
+            else
+                rem[j-1]='1';
+        }
+        rem[keylen-1]=input[i+keylen];
+        strcpy(temp,rem);
+    }
+    strcpy(rem,temp);
+    for(int k = 0;k<keylen-1;k++){
+        if(rem[k]=='1') return false;
+    }
+    return true;
+}
+
+
 void crc(char *input,char *key1,char *result,int keylen,int msglen){
-	char key[30],temp[30],quot[100],rem[30];
+	char key[30],temp[1000],quot[1000],rem[30];
 	int i,j;
 
 	strcpy(key,key1);
@@ -99,19 +148,24 @@ void crc(char *input,char *key1,char *result,int keylen,int msglen){
 BER -> Bit Error Rate = No of bits to have error in a bit transmitted on an average
 So we randomly choose these bits and generate error
 */
-	void randomError(float ber,char *pure,char *noisy,int size){
-		int n = floor(ber*size);
-
+	void randomError(char *pure,char *noisy,int size){
+		total_sent += size;
+		int n = floor(ber*(total_sent))-total_error;
+		total_error += n;
+		if(n==0) return;
 		int indx[n];
 		for(int i=0;i<n;i++){
 			indx[i] = rand() % size-1;
-			printf("%d\n",indx[i]);
+			// printf("%d\n",indx[i]);
 		}
-		printf("\n");
+		printf("Error is here.\n");
 		for(int i=0;i<n;i++){
 			if(pure[indx[i]]) noisy[indx[i]] = '0';
 			else noisy[indx[i]] = '1';
 		}
+
+		printf("%s (Error)\n",noisy);
+		return;
 	}
 
 	int main(int argc,char *argv[]){ 
@@ -169,10 +223,10 @@ So we randomly choose these bits and generate error
 		int seq_no = 0;
 		while(1){
 			int i,j,keylen,msglen;
-			char input[100],temp[30],quot[100],rem[30],key1[30];
+			char input[1000-3];
 			printf("Enter Data: ");
 			gets(input);
-			char new_input[103];
+			char new_input[1000];
 			if(seq_no==0){
 				new_input[0] = '0';
 			}
@@ -181,7 +235,7 @@ So we randomly choose these bits and generate error
 			}
 			new_input[1] = '0';
 			new_input[2] = '0';
-			for(int i=0; i<100; i++){
+			for(int i=0; i<1000-3; i++){
 				new_input[i+3] = input[i];
 			}
 			keylen=strlen(key);
@@ -191,7 +245,10 @@ So we randomly choose these bits and generate error
 			for(i=0;i<msglen+keylen-1;i++){
 				printf("%c",result[i]);			
 			}
-			send(sock,result,keylen+msglen-1,0); 
+			char noisy[1000]={0};
+			strcpy(noisy,result);
+			randomError(result,noisy,keylen+msglen-1);
+			send(sock,noisy,keylen+msglen-1,0); 
 			//send the message, the 0 as last parameter is the field for flags.
 			printf("\nPlease Wait\n"); 
 
@@ -206,11 +263,26 @@ So we randomly choose these bits and generate error
 					break;
 				}
 				if(((clock() - before) * 1000 / CLOCKS_PER_SEC)>=trigger){
-					send(sock,result,keylen+msglen-1,0); 
+					char _noisy[1000]={0};
+					strcpy(_noisy,result);
+					randomError(result,_noisy,keylen+msglen-1);
+					send(sock,_noisy,keylen+msglen-1,0); 
+
+					printf("Timeout Occured.\n"); 
 					before = clock();
 					continue;
 				}
 				if(strlen(buffer)!=0){
+					bool errfree = isErrorFree(buffer,key,strlen(buffer),strlen(key));
+					if(!errfree){
+						printf("Error in ACK/NACK occured.\n"); 
+						char _noisy[1000]={0};
+						strcpy(_noisy,result);
+						randomError(result,_noisy,keylen+msglen-1);
+						send(sock,_noisy,keylen+msglen-1,0); 
+						before = clock();
+
+					}
 					if((1-seq_no)==(int)(buffer[0]-'0')&&buffer[1]=='1'){
 						printf("%s\n",buffer); 
 						printf("Message Sent Successfully.\n"); 
@@ -218,7 +290,12 @@ So we randomly choose these bits and generate error
 						break;
 					}
 					else{
-						send(sock,result,keylen+msglen-1,0); 
+						printf("Error occured.\n"); 
+						char _noisy[1000]={0};
+						strcpy(_noisy,result);
+						randomError(result,_noisy,keylen+msglen-1);
+						send(sock,_noisy,keylen+msglen-1,0); 
+
 						before = clock();
 					}
 				}

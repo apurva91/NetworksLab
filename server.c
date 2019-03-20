@@ -17,6 +17,12 @@
 #define MAX_PENDING_CONN 50
 #define RTT 0.5
 
+
+int total_sent = 0;
+int total_error = 0;
+float ber = 0.05;
+
+
 const char * IP_ADDRESS = "0.0.0.0";
 
 char client_message[2000];
@@ -79,8 +85,9 @@ void removesocket(int fd){
     }
 }
 
+
 bool isErrorFree(char *input1,char *key1,int msglen,int keylen){
-    char key[30],temp[30],quot[100],rem[30];
+    char key[30],temp[1000],quot[1000],rem[30];
     int i,j;
     char input[msglen+1];
     strcpy(input,input1);
@@ -122,33 +129,103 @@ bool isErrorFree(char *input1,char *key1,int msglen,int keylen){
     return true;
 }
 
-void printnew(int socketfd){
-    struct sockaddr_in address;
-    socklen_t addrlen = sizeof(struct sockaddr_in);
-    getpeername(socketfd,(struct sockaddr*)&address,(socklen_t*)&addrlen);
-    printf("New client connected from %s:%d\n",inet_ntoa(address.sin_addr) , ntohs(address.sin_port));
-}
 
-void printmessage(int socketfd, char message[]){
-    struct sockaddr_in address;
-    socklen_t addrlen = sizeof(struct sockaddr_in);
-    getpeername(socketfd,(struct sockaddr*)&address,(socklen_t*)&addrlen);
-    printf("Message from %s:%d : %s\n",inet_ntoa(address.sin_addr) , ntohs(address.sin_port),message);
-}
+void crc(char *input,char *key1,char *result,int keylen,int msglen){
+    char key[30],temp[1000],quot[1000],rem[30];
+    int i,j;
 
-void printdisconnect(int socketfd){
-    struct sockaddr_in address;
-    socklen_t addrlen = sizeof(struct sockaddr_in);
-    getpeername(socketfd,(struct sockaddr*)&address,(socklen_t*)&addrlen);
-    printf("Host from %s:%d disconnected\n",inet_ntoa(address.sin_addr) , ntohs(address.sin_port));
-}
+    strcpy(key,key1);
+    for(i=0;i<keylen-1;i++)
+    {
+        input[msglen+i]='0';
+    }
+    for(i=0;i<keylen;i++)
+        temp[i]=input[i];
+    for(i=0;i<msglen;i++)
+    {
+        quot[i]=temp[0];
+        if(quot[i]=='0')
+            for(j=0;j<keylen;j++)
+                key[j]='0';
+            else{
+                for(j=0;j<keylen;j++)
+                    key[j]=key1[j];
+            }
+            for(j=keylen-1;j>0;j--)
+            {
+                if(temp[j]==key[j])
+                    rem[j-1]='0';
+                else
+                    rem[j-1]='1';
+            }
+            rem[keylen-1]=input[i+keylen];
+            strcpy(temp,rem);
+        }
+        strcpy(rem,temp);
+        // printf("\nQuotient is ");
+        // for(i=0;i<msglen;i++)
+        //  printf("%c",quot[i]);
+        // printf("\nRemainder is ");
+        // for(i=0;i<keylen-1;i++)
+        //  printf("%c",rem[i]);
+        printf("\nFinal data is: ");
+        for(i=0;i<msglen;i++){
+            result[i]=input[i];
+        }
+        printf("\n");
+        for(i=0;i<keylen-1;i++){
+            result[msglen+i] = rem[i];
+        }
+    }
 
-void printclose(int socketfd){
-    struct sockaddr_in address;
-    socklen_t addrlen = sizeof(struct sockaddr_in);
-    getpeername(socketfd,(struct sockaddr*)&address,(socklen_t*)&addrlen);
-    printf("Connection from %s:%d closed\n",inet_ntoa(address.sin_addr) , ntohs(address.sin_port));
-}
+
+    void randomError(char *pure,char *noisy,int size){
+        total_sent += size;
+        int n = (int)(ber*(total_sent))-total_error;
+        total_error += n;
+        if(n==0) return;
+        int indx[n];
+        for(int i=0;i<n;i++){
+            indx[i] = rand() % size-1;
+            // printf("%d\n",indx[i]);
+        }
+        printf("Error is here.\n");
+        for(int i=0;i<n;i++){
+            if(pure[indx[i]]) noisy[indx[i]] = '0';
+            else noisy[indx[i]] = '1';
+        }
+
+        printf("%-.*s (Error)\n",size,noisy);
+        return;
+    }
+
+    void printnew(int socketfd){
+        struct sockaddr_in address;
+        socklen_t addrlen = sizeof(struct sockaddr_in);
+        getpeername(socketfd,(struct sockaddr*)&address,(socklen_t*)&addrlen);
+        printf("New client connected from %s:%d\n",inet_ntoa(address.sin_addr) , ntohs(address.sin_port));
+    }
+
+    void printmessage(int socketfd, char message[]){
+        struct sockaddr_in address;
+        socklen_t addrlen = sizeof(struct sockaddr_in);
+        getpeername(socketfd,(struct sockaddr*)&address,(socklen_t*)&addrlen);
+        printf("Message from %s:%d : %s\n",inet_ntoa(address.sin_addr) , ntohs(address.sin_port),message);
+    }
+
+    void printdisconnect(int socketfd){
+        struct sockaddr_in address;
+        socklen_t addrlen = sizeof(struct sockaddr_in);
+        getpeername(socketfd,(struct sockaddr*)&address,(socklen_t*)&addrlen);
+        printf("Host from %s:%d disconnected\n",inet_ntoa(address.sin_addr) , ntohs(address.sin_port));
+    }
+
+    void printclose(int socketfd){
+        struct sockaddr_in address;
+        socklen_t addrlen = sizeof(struct sockaddr_in);
+        getpeername(socketfd,(struct sockaddr*)&address,(socklen_t*)&addrlen);
+        printf("Connection from %s:%d closed\n",inet_ntoa(address.sin_addr) , ntohs(address.sin_port));
+    }
 
 void sigintHandler(int sig_num)   // handler when Ctrl+c is pressed
 { 
@@ -158,13 +235,13 @@ void sigintHandler(int sig_num)   // handler when Ctrl+c is pressed
     printf("Please Wait. Gracefully closing all sockets.\n");
     for(int i=0;i<100;i++){
         if(_socket[i]!=0){
-           printclose(_socket[i]);
-           close(_socket[i]);
-        }
-    }
-    printf("Closing server.\n");
-    fflush(stdout); 
-    exit(0);
+         printclose(_socket[i]);
+         close(_socket[i]);
+     }
+ }
+ printf("Closing server.\n");
+ fflush(stdout); 
+ exit(0);
 }
 
 void * socketThread(void *arg){
@@ -184,24 +261,36 @@ void * socketThread(void *arg){
                 char key[10] = {'1','0','0','0','0','0','1','1','1'};
                 key[9] = '\0';
                 bool errfree = isErrorFree(buffer,key,strlen(buffer),strlen(key));
+                char new_input[100] = "110";
                 if(seq_no==(int)(buffer[0]-'0')&&errfree){
                     if(seq_no==0){
-                        send(newSocket,"110",strlen("010"),0);
                         seq_no=1-seq_no;
                     }
                     else{
-                        send(newSocket,"010",strlen("010"),0);
+                        new_input[0] = '0';
                         seq_no=1-seq_no;
                     }
                 }
                 else{
                     if(seq_no==1){
-                        send(newSocket,"101",strlen("010"),0);
+                        new_input[1] = '0';
+                        new_input[2] = '1';
                     }
                     else{
-                        send(newSocket,"001",strlen("010"),0);
+                        new_input[0] = '0';
+                        new_input[1] = '0';
+                        new_input[2] = '1';
                     }
                 }
+                int i,j,keylen,msglen;
+                keylen=strlen(key);
+                msglen=strlen(new_input);
+                char result[keylen+msglen-1];
+                crc(new_input,key,result,keylen,msglen); 
+                char noisy[1000]={0};
+                strcpy(noisy,result);
+                randomError(result,noisy,keylen+msglen-1);
+                send(newSocket,noisy,keylen+msglen-1,0);
                 printmessage(newSocket,buffer);
                 printf("Error Free Status : %d\n",errfree);
                 sleep(RTT);
