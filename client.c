@@ -108,5 +108,10 @@ int main(int argc,char *argv[])
 	int valread = read(sock,buffer,OUTPUT_BUFFER_SIZE); 
 	printf("%s\n",buffer); 
 
+	// send(sock,message,strlen(message),0); 
+	// printf("Message Sent Successfully\n");
+	// valread = read(sock,buffer,OUTPUT_BUFFER_SIZE); 
+	// printf("%s\n",buffer); 
+	// while(1){}
 	return 0; 
 } 
