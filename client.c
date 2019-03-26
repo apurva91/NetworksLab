@@ -54,46 +54,46 @@ int str_to_pnum(char str[]){
 }
 
 bool isErrorFree(char *input1,char *key1,int msglen,int keylen){
-    char key[30],temp[1000],quot[1000],rem[30];
-    int i,j;
-    char input[msglen+1];
-    strcpy(input,input1);
-    strcpy(key,key1);
-    for(i=0;i<keylen-1;i++)
-    {
-        input[msglen+i]='0';
-    }
-    for(i=0;i<keylen;i++){
-        temp[i]=input[i];
-    }
-    for(i=0;i<msglen;i++)
-    {
-        quot[i]=temp[0];
-        if(quot[i]=='0'){
+	char key[30],temp[1000],quot[1000],rem[30];
+	int i,j;
+	char input[msglen+1];
+	strcpy(input,input1);
+	strcpy(key,key1);
+	for(i=0;i<keylen-1;i++)
+	{
+		input[msglen+i]='0';
+	}
+	for(i=0;i<keylen;i++){
+		temp[i]=input[i];
+	}
+	for(i=0;i<msglen;i++)
+	{
+		quot[i]=temp[0];
+		if(quot[i]=='0'){
 
-            for(j=0;j<keylen;j++)
-                key[j]='0';
-        }
-        else{
-            for(j=0;j<keylen;j++){
-                key[j]=key1[j];
-            }
-        }
-        for(j=keylen-1;j>0;j--)
-        {
-            if(temp[j]==key[j])
-                rem[j-1]='0';
-            else
-                rem[j-1]='1';
-        }
-        rem[keylen-1]=input[i+keylen];
-        strcpy(temp,rem);
-    }
-    strcpy(rem,temp);
-    for(int k = 0;k<keylen-1;k++){
-        if(rem[k]=='1') return false;
-    }
-    return true;
+			for(j=0;j<keylen;j++)
+				key[j]='0';
+		}
+		else{
+			for(j=0;j<keylen;j++){
+				key[j]=key1[j];
+			}
+		}
+		for(j=keylen-1;j>0;j--)
+		{
+			if(temp[j]==key[j])
+				rem[j-1]='0';
+			else
+				rem[j-1]='1';
+		}
+		rem[keylen-1]=input[i+keylen];
+		strcpy(temp,rem);
+	}
+	strcpy(rem,temp);
+	for(int k = 0;k<keylen-1;k++){
+		if(rem[k]=='1') return false;
+	}
+	return true;
 }
 
 
@@ -135,11 +135,10 @@ void crc(char *input,char *key1,char *result,int keylen,int msglen){
 		// printf("\nRemainder is ");
 		// for(i=0;i<keylen-1;i++)
 		// 	printf("%c",rem[i]);
-		printf("\nFinal data is: ");
 		for(i=0;i<msglen;i++){
 			result[i]=input[i];
 		}
-		printf("\n");
+
 		for(i=0;i<keylen-1;i++){
 			result[msglen+i] = rem[i];
 		}
@@ -152,19 +151,21 @@ So we randomly choose these bits and generate error
 		total_sent += size;
 		int n = floor(ber*(total_sent))-total_error;
 		total_error += n;
-		if(n==0) return;
+		if(n==0){
+		printf("Sent Data:    %-.*s\n",size,noisy);
+
+			return;}
 		int indx[n];
 		for(int i=0;i<n;i++){
 			indx[i] = rand() % size-1;
 			// printf("%d\n",indx[i]);
 		}
-		printf("Error is here.\n");
 		for(int i=0;i<n;i++){
 			if(pure[indx[i]]) noisy[indx[i]] = '0';
 			else noisy[indx[i]] = '1';
 		}
 
-		printf("%s (Error)\n",noisy);
+		printf("Sent Data:    %-.*s \n",size,noisy);
 		return;
 	}
 
@@ -242,16 +243,17 @@ So we randomly choose these bits and generate error
 			msglen=strlen(new_input);
 			char result[keylen+msglen-1];
 			crc(new_input,key,result,keylen,msglen); 
+			printf("Data Entered: ");
 			for(i=0;i<msglen+keylen-1;i++){
 				printf("%c",result[i]);			
 			}
+			printf("\n");
 			char noisy[1000]={0};
 			strcpy(noisy,result);
 			randomError(result,noisy,keylen+msglen-1);
 			send(sock,noisy,keylen+msglen-1,0); 
 			//send the message, the 0 as last parameter is the field for flags.
-			printf("\nPlease Wait\n"); 
-
+			
 			int trigger = 5000;
 			clock_t before = clock();
 
@@ -284,8 +286,8 @@ So we randomly choose these bits and generate error
 
 					}
 					if((1-seq_no)==(int)(buffer[0]-'0')&&buffer[1]=='1'){
-						printf("%s\n",buffer); 
-						printf("Message Sent Successfully.\n"); 
+						printf("Correct Recieved Message: %s\n",buffer); 
+						printf("Message Sent Successfully.\n\n"); 
 						seq_no = 1-seq_no;
 						break;
 					}
@@ -295,7 +297,6 @@ So we randomly choose these bits and generate error
 						strcpy(_noisy,result);
 						randomError(result,_noisy,keylen+msglen-1);
 						send(sock,_noisy,keylen+msglen-1,0); 
-
 						before = clock();
 					}
 				}

@@ -168,11 +168,9 @@ void crc(char *input,char *key1,char *result,int keylen,int msglen){
         // printf("\nRemainder is ");
         // for(i=0;i<keylen-1;i++)
         //  printf("%c",rem[i]);
-        printf("\nFinal data is: ");
         for(i=0;i<msglen;i++){
             result[i]=input[i];
         }
-        printf("\n");
         for(i=0;i<keylen-1;i++){
             result[msglen+i] = rem[i];
         }
@@ -189,13 +187,13 @@ void crc(char *input,char *key1,char *result,int keylen,int msglen){
             indx[i] = rand() % size-1;
             // printf("%d\n",indx[i]);
         }
-        printf("Error is here.\n");
+
         for(int i=0;i<n;i++){
             if(pure[indx[i]]) noisy[indx[i]] = '0';
             else noisy[indx[i]] = '1';
         }
 
-        printf("%-.*s (Error)\n",size,noisy);
+
         return;
     }
 
@@ -235,13 +233,13 @@ void sigintHandler(int sig_num)   // handler when Ctrl+c is pressed
     printf("Please Wait. Gracefully closing all sockets.\n");
     for(int i=0;i<100;i++){
         if(_socket[i]!=0){
-         printclose(_socket[i]);
-         close(_socket[i]);
-     }
- }
- printf("Closing server.\n");
- fflush(stdout); 
- exit(0);
+           printclose(_socket[i]);
+           close(_socket[i]);
+       }
+   }
+   printf("Closing server.\n");
+   fflush(stdout); 
+   exit(0);
 }
 
 void * socketThread(void *arg){
@@ -286,13 +284,18 @@ void * socketThread(void *arg){
                 keylen=strlen(key);
                 msglen=strlen(new_input);
                 char result[keylen+msglen-1];
+                printmessage(newSocket,buffer);
                 crc(new_input,key,result,keylen,msglen); 
                 char noisy[1000]={0};
                 strcpy(noisy,result);
+                printf("Data Entered: %-.*s\n",keylen+msglen-1,result);
                 randomError(result,noisy,keylen+msglen-1);
+                printf("Sent Data:    %-.*s \n",keylen+msglen-1,noisy);
                 send(newSocket,noisy,keylen+msglen-1,0);
-                printmessage(newSocket,buffer);
-                printf("Error Free Status : %d\n",errfree);
+                if(!errfree){
+                    printf("Error in transmission.\n");
+                }
+                printf("\n");
                 sleep(RTT);
             }
         }
